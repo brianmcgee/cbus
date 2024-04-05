@@ -100,7 +100,7 @@ func addDestination(dest string) error {
 	}
 
 	cfg := micro.Config{
-		Name:       normalizeDestination(dest),
+		Name:       NormalizeDestination(dest),
 		Version:    "0.0.1", // todo is this required, does it have any meaning in this context?
 		QueueGroup: nkey,
 	}
@@ -113,7 +113,7 @@ func addDestination(dest string) error {
 	for _, subject := range busSubjects(dest) {
 
 		if err = srv.AddEndpoint(
-			normalizeDestination(dest),
+			NormalizeDestination(dest),
 			micro.HandlerFunc(busHandler),
 			micro.WithEndpointSubject(subject+".>"),
 		); err != nil {
