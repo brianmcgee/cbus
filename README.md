@@ -11,7 +11,7 @@
 I've been thinking about a clustered `systemctl` for a while now, and when I started digging into it recently I
 eventually ended up looking closely at [DBus](https://www.freedesktop.org/wiki/Software/dbus/).
 
-What I *want to achieve* is remotely monitor and manage multiple machines.
+What I _want to achieve_ is remotely monitor and manage multiple machines.
 
 I think DBus provides the underlying mechanism for this in the form of:
 
@@ -141,7 +141,7 @@ Signature: s
 
 ```terminal
 ❯ nats --context TestAdmin sub "dbus.signals.>"
-12:14:06 Subscribing on dbus.signals.> 
+12:14:06 Subscribing on dbus.signals.>
 [#1] Received on "dbus.signals.UBQUIKYGFC7CH5XMF52P2NN4ESI4XTXGAKT3WTG3XGU3352DMHGZQAX7._1_1.org.freedesktop.systemd1.unit.nscd_2eservice"
 Interface: org.freedesktop.DBus.Properties
 Member: PropertiesChanged

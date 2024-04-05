@@ -94,6 +94,26 @@
         "type": "github"
       }
     },
+    "github-actions": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1703863825,
+        "narHash": "sha256-rXwqjtwiGKJheXB43ybM8NwWB8rO2dSRrEqes0S7F5Y=",
+        "owner": "nix-community",
+        "repo": "nix-github-actions",
+        "rev": "5163432afc817cf8bd1f031418d1869e4c9d5547",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "nix-github-actions",
+        "type": "github"
+      }
+    },
     "gomod2nix": {
       "inputs": {
         "flake-utils": [
@@ -116,33 +136,6 @@
       "original": {
         "owner": "nix-community",
         "repo": "gomod2nix",
-        "type": "github"
-      }
-    },
-    "harmonia": {
-      "inputs": {
-        "flake-parts": [
-          "flake-parts"
-        ],
-        "nixpkgs": [
-          "srvos",
-          "nixpkgs"
-        ],
-        "treefmt-nix": [
-          "treefmt-nix"
-        ]
-      },
-      "locked": {
-        "lastModified": 1712193684,
-        "narHash": "sha256-HBksyUBZZO1eAlimgmlkVl/8L41DZalgUlHahPvSGdg=",
-        "owner": "nix-community",
-        "repo": "harmonia",
-        "rev": "18e9c08c7ef1692220da6a339b015dbfb4d61fe6",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nix-community",
-        "repo": "harmonia",
         "type": "github"
       }
     },
@@ -263,8 +256,8 @@
           "nix-lib",
           "flake-root"
         ],
+        "github-actions": "github-actions",
         "gomod2nix": "gomod2nix",
-        "harmonia": "harmonia",
         "nix-filter": "nix-filter",
         "nix-lib": "nix-lib",
         "nixpkgs": [

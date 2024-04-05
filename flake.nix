@@ -28,14 +28,6 @@
       inputs.nixpkgs.follows = "srvos/nixpkgs";
     };
     process-compose-flake.url = "github:Platonic-Systems/process-compose-flake";
-    harmonia = {
-      url = "github:nix-community/harmonia";
-      inputs = {
-        nixpkgs.follows = "srvos/nixpkgs";
-        flake-parts.follows = "flake-parts";
-        treefmt-nix.follows = "treefmt-nix";
-      };
-    };
     gomod2nix = {
       url = "github:nix-community/gomod2nix";
       inputs = {
@@ -56,6 +48,10 @@
       };
     };
     nix-filter.url = "github:numtide/nix-filter";
+    github-actions = {
+      url = "github:nix-community/nix-github-actions";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = inputs @ {
