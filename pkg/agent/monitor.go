@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"github.com/charmbracelet/log"
 	"github.com/godbus/dbus/v5"
 	"github.com/juju/errors"
 	"github.com/nats-io/nats.go"
-	"strings"
 )
 
 func monitorSignals(ctx context.Context) error {

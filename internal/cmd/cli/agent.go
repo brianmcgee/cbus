@@ -2,10 +2,11 @@ package cli
 
 import (
 	"context"
+	"syscall"
+
 	"github.com/brianmcgee/cbus/pkg/agent"
 	nutil "github.com/numtide/nits/pkg/nats"
 	"github.com/ztrue/shutdown"
-	"syscall"
 )
 
 type Agent struct {

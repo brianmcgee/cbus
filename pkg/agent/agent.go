@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+
 	"github.com/godbus/dbus/v5"
 	"github.com/juju/errors"
 	"github.com/nats-io/nats.go"

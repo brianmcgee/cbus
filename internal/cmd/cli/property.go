@@ -3,9 +3,10 @@ package cli
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/brianmcgee/cbus/pkg/send"
 	nutil "github.com/numtide/nits/pkg/nats"
-	"time"
 )
 
 type Property struct {

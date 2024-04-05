@@ -27,7 +27,7 @@
       dev.settings.processes = {
         nats-server = {
           working_dir = "$NATS_HOME";
-          command = ''${lib.getExe pkgs.nats-server} -c ./nats.conf -D -sd ./'';
+          command = ''${lib.getExe pkgs.nats-server} -c ./nats.conf -sd ./'';
           readiness_probe = {
             http_get = {
               host = "127.0.0.1";
@@ -58,7 +58,8 @@
                   # add a user account for the VM
                   nsc add user -a "$ACCOUNT" \
                       -k "$NKEY" -n "$NAME" \
-                      --allow-sub "dbus.bus.>" \
+                      --allow-sub "dbus.agent.$NKEY.>" \
+                      --allow-sub "dbus.broadcast.>" \
                       --allow-pub "dbus.signals.$NKEY.>" \
                       --allow-sub "\$SRV.>" \
                       --allow-pub "_INBOX.>"

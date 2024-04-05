@@ -4,19 +4,44 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+
 	"github.com/charmbracelet/log"
 	"github.com/godbus/dbus/v5"
 	"github.com/godbus/dbus/v5/introspect"
 	"github.com/juju/errors"
 	"github.com/nats-io/nats.go/micro"
-	"strconv"
-	"strings"
 )
 
-var serviceMap map[string]micro.Service
+var (
+	endpointRegex = regexp.MustCompile(`^dbus\.(broadcast|agent\..*?)\.(.*?)\.(.*?)\.(method|prop).(.*)$`)
+
+	serviceMap map[string]micro.Service
+)
+
+type invocation struct {
+	dest    string
+	path    dbus.ObjectPath
+	variant string // "prop" or "method"
+	target  string
+}
+
+func parseInvocation(subject string) (*invocation, error) {
+	result := endpointRegex.FindStringSubmatch(subject)
+	if len(result) != 6 {
+		return nil, errors.Errorf("invalid request subject: %v", subject)
+	}
+	return &invocation{
+		dest:    strings.ReplaceAll(result[2], "_", "."),
+		path:    dbus.ObjectPath("/" + strings.ReplaceAll(result[3], ".", "/")),
+		variant: result[4],
+		target:  result[5],
+	}, nil
+}
 
 func proxy(ctx context.Context) (err error) {
-
 	// channel for receiving signals
 	signals := make(chan *dbus.Signal, 32)
 	dbusConn.Signal(signals)
@@ -57,7 +82,7 @@ func proxy(ctx context.Context) (err error) {
 			log.Debugf("Received signal: %s", signal.Name)
 
 			name := signal.Body[0].(string)
-			//oldOwner := signal.Body[1].(string)
+			// oldOwner := signal.Body[1].(string)
 			newOwner := signal.Body[2].(string)
 
 			if newOwner != "" {
@@ -74,27 +99,33 @@ func addDestination(dest string) error {
 		serviceMap = make(map[string]micro.Service)
 	}
 
-	subjects := []string{dest, dest + "_" + nkey}
-
-	for _, subject := range subjects {
-		cfg := micro.Config{
-			Name:       strings.ReplaceAll(strings.ReplaceAll(subject, ".", "_"), ":", "_"),
-			Version:    "0.0.1", // todo is this required, does it have any meaning in this context?
-			QueueGroup: nkey,
-		}
-
-		srv, err := micro.AddService(natsConn, cfg)
-		if err != nil {
-			return errors.Annotate(err, "failed to register service")
-		}
-
-		if err = registerObject(dest, "/", srv); err != nil {
-			return err
-		}
-
-		serviceMap[dest] = srv
+	cfg := micro.Config{
+		Name:       normalizeDestination(dest),
+		Version:    "0.0.1", // todo is this required, does it have any meaning in this context?
+		QueueGroup: nkey,
 	}
 
+	srv, err := micro.AddService(natsConn, cfg)
+	if err != nil {
+		return errors.Annotate(err, "failed to register service")
+	}
+
+	for _, subject := range busSubjects(dest) {
+
+		if err = srv.AddEndpoint(
+			normalizeDestination(dest),
+			micro.HandlerFunc(busHandler),
+			micro.WithEndpointSubject(subject+".>"),
+		); err != nil {
+			return errors.Annotatef(err, "failed to register bus handler for %s", subject)
+		}
+
+		log.Info("registered bus handler", "subject", subject, "dest", dest)
+	}
+
+	serviceMap[dest] = srv
+
+	log.Info("added destination", "dest", dest)
 	return nil
 }
 
@@ -111,100 +142,47 @@ func removeDestination(dest string) error {
 	return srv.Stop()
 }
 
-func registerObject(dest string, path dbus.ObjectPath, srv micro.Service) error {
-	obj := dbusConn.Object(dest, path)
+func busHandler(req micro.Request) {
+	inv, err := parseInvocation(req.Subject())
+	if err != nil {
+		_ = req.Error("100", err.Error(), nil)
+		return
+	}
+
+	obj := dbusConn.Object(inv.dest, inv.path)
+
+	// todo cache these lookups?
 	node, err := introspect.Call(obj)
 	if err != nil {
-		return errors.Annotatef(err, "failed to introspect object: %v", obj)
+		_ = req.Error("100", "failed to introspect object", []byte(err.Error()))
+		return
 	}
 
-	subj := fmt.Sprintf("dbus.bus.%s", strings.ReplaceAll(dest, ".", "_"))
-	if node.Name != "/" {
-		subj = subj + strings.ReplaceAll(node.Name, "/", ".")
-	}
+	switch inv.variant {
+	case "prop":
 
-	group := srv.AddGroup(subj)
-
-	for _, iface := range node.Interfaces {
-		iface := iface
-
-		for _, prop := range iface.Properties {
-			propName := fmt.Sprintf("%s.%s", iface.Name, prop.Name)
-
-			annotations, err := json.Marshal(prop.Annotations)
-			if err != nil {
-				return errors.Annotate(err, "failed to marshal annotations to JSON")
-			}
-
-			err = group.AddEndpoint(
-				prop.Name,
-				propHandler(obj, propName),
-				micro.WithEndpointMetadata(map[string]string{
-					"Type":            "property",
-					"Annotations":     string(annotations),
-					"Property-Type":   prop.Type,
-					"Property-Access": prop.Access,
-				}),
-			)
-
-			if err != nil {
-				return errors.Annotate(err, "failed to register property endpoint")
+		// find the property
+		// todo cache these lookups?
+		var name string
+		for _, iface := range node.Interfaces {
+			for _, p := range iface.Properties {
+				if p.Name == inv.target {
+					name = iface.Name + "." + p.Name
+				}
 			}
 		}
 
-		for _, method := range iface.Methods {
-
-			methodName := fmt.Sprintf("%s.%s", iface.Name, method.Name)
-
-			args, err := json.Marshal(method.Args)
-			if err != nil {
-				return errors.Annotate(err, "failed to marshal []Args to JSON")
-			}
-
-			annotations, err := json.Marshal(method.Annotations)
-			if err != nil {
-				return errors.Annotate(err, "failed to marshal []Annotations to JSON")
-			}
-
-			err = group.AddEndpoint(
-				method.Name,
-				methodHandler(obj, methodName, &method),
-				micro.WithEndpointMetadata(map[string]string{
-					"Type":        "method",
-					"Args":        string(args),
-					"Annotations": string(annotations),
-				}),
-			)
-
-			if err != nil {
-				return errors.Annotate(err, "failed to register method endpoint")
-			}
-		}
-	}
-
-	for _, child := range node.Children {
-
-		childPath := string(path) + "/" + child.Name
-		if path == "/" {
-			// remove leading "/"
-			childPath = childPath[1:]
+		if name == "" {
+			_ = req.Error("100", fmt.Sprintf("invalid property: %v", inv.target), nil)
+			return
 		}
 
-		if err := registerObject(dest, dbus.ObjectPath(childPath), srv); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func propHandler(obj dbus.BusObject, name string) micro.HandlerFunc {
-	return func(req micro.Request) {
 		prop, err := obj.GetProperty(name)
 		if err != nil {
 			_ = req.Error("100", err.Error(), nil)
 			return
 		}
+
 		headers := micro.WithHeaders(
 			micro.Headers{
 				"NKey":      []string{nkey},
@@ -212,18 +190,24 @@ func propHandler(obj dbus.BusObject, name string) micro.HandlerFunc {
 			},
 		)
 		_ = req.Respond([]byte(prop.String()), headers)
-	}
-}
 
-func methodHandler(obj dbus.BusObject, name string, method *introspect.Method) micro.HandlerFunc {
-	var inArgs []introspect.Arg
-	for _, arg := range method.Args {
-		if arg.Direction == "in" {
-			inArgs = append(inArgs, arg)
+	case "method":
+
+		// find the method
+		var method string
+		for _, iface := range node.Interfaces {
+			for _, m := range iface.Methods {
+				if m.Name == inv.target {
+					method = iface.Name + "." + m.Name
+				}
+			}
 		}
-	}
 
-	return func(req micro.Request) {
+		if method == "" {
+			_ = req.Error("100", fmt.Sprintf("invalid method: %v", inv.target), nil)
+			return
+		}
+
 		flagHeader := req.Headers().Get("Method-Flag")
 		if flagHeader == "" {
 			flagHeader = "0"
@@ -237,8 +221,7 @@ func methodHandler(obj dbus.BusObject, name string, method *introspect.Method) m
 
 		// todo improve validation of args
 
-		invokeArgs := make([]interface{}, len(inArgs))
-
+		var invokeArgs []interface{}
 		if len(req.Data()) > 0 {
 			if err = json.Unmarshal(req.Data(), &invokeArgs); err != nil {
 				_ = req.Error("100", "failed to unmarshal req.Data", nil)
@@ -246,7 +229,7 @@ func methodHandler(obj dbus.BusObject, name string, method *introspect.Method) m
 			}
 		}
 
-		call := obj.Call(name, dbus.Flags(flag), invokeArgs...)
+		call := obj.Call(method, dbus.Flags(flag), invokeArgs...)
 		if call.Err != nil {
 			_ = req.Error("100", "failed to invoke method: "+err.Error(), nil)
 			return
@@ -264,5 +247,10 @@ func methodHandler(obj dbus.BusObject, name string, method *introspect.Method) m
 			},
 		)
 		_ = req.Respond(bytes, headers)
+
+	default:
+		log.Error("unexpected invocation variant", "subject", req.Subject(), "variant", inv.variant)
+		_ = req.Error("500", "Internal Error", nil)
+		return
 	}
 }

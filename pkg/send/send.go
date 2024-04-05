@@ -5,9 +5,7 @@ import (
 	nutil "github.com/numtide/nits/pkg/nats"
 )
 
-var (
-	conn *nats.Conn
-)
+var conn *nats.Conn
 
 func Init(natsConfig nutil.CliOptions) (err error) {
 	// connect to nats
