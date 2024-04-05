@@ -1,6 +1,5 @@
 {...}: {
   imports = [
-    ./binary-cache
     ./nats
     ./vms
   ];

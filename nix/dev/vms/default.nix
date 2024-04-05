@@ -69,9 +69,6 @@
       dev.settings.processes = let
         mkAgentProcess = id: {
           command = "run-test-machine ${builtins.toString id}";
-          depends_on = {
-            binary-cache.condition = "process_healthy";
-          };
         };
         configs =
           map
