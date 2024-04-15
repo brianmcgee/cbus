@@ -89,17 +89,48 @@ some methods.
 
 ```terminal
 ❯ nix run .# -- invoke org.freedesktop.systemd1 /org/freedesktop/systemd1 GetDefaultTarget
+NKey: UAMLBE4LIDYXH6FO5LW6CPLEBZJ23I2OT3TPZYIJPQY5HJ46X3BU7UJK
+
+[default.target]
+
 NKey: UBQUIKYGFC7CH5XMF52P2NN4ESI4XTXGAKT3WTG3XGU3352DMHGZQAX7
 
-["default.target"]
+[default.target]
 
 NKey: UAILZJS66U24VALTH2D6OWVD5JTS3IDFMKOICJSOX7CHNAF3AXFVWIFX
 
-["default.target"]
+[default.target]
 
-NKey: UAMLBE4LIDYXH6FO5LW6CPLEBZJ23I2OT3TPZYIJPQY5HJ46X3BU7UJK
+```
 
-["default.target"]
+JSON output with `-J` flag:
+
+```terminal
+❯ nix run .# -- invoke org.freedesktop.systemd1 /org/freedesktop/systemd1 GetDefaultTarget -J | jq
+{
+  "destination": "org.freedesktop.systemd1",
+  "path": "/org/freedesktop/systemd1",
+  "responses": [
+    {
+      "nkey": "UBQUIKYGFC7CH5XMF52P2NN4ESI4XTXGAKT3WTG3XGU3352DMHGZQAX7",
+      "value": [
+        "default.target"
+      ]
+    },
+    {
+      "nkey": "UAMLBE4LIDYXH6FO5LW6CPLEBZJ23I2OT3TPZYIJPQY5HJ46X3BU7UJK",
+      "value": [
+        "default.target"
+      ]
+    },
+    {
+      "nkey": "UAILZJS66U24VALTH2D6OWVD5JTS3IDFMKOICJSOX7CHNAF3AXFVWIFX",
+      "value": [
+        "default.target"
+      ]
+    }
+  ]
+}
 ```
 
 #### Get a property on all machines
@@ -109,17 +140,42 @@ NKey: UAMLBE4LIDYXH6FO5LW6CPLEBZJ23I2OT3TPZYIJPQY5HJ46X3BU7UJK
 NKey: UBQUIKYGFC7CH5XMF52P2NN4ESI4XTXGAKT3WTG3XGU3352DMHGZQAX7
 Signature: s
 
-"active"
-
-NKey: UAMLBE4LIDYXH6FO5LW6CPLEBZJ23I2OT3TPZYIJPQY5HJ46X3BU7UJK
-Signature: s
-
-"active"
+active
 
 NKey: UAILZJS66U24VALTH2D6OWVD5JTS3IDFMKOICJSOX7CHNAF3AXFVWIFX
 Signature: s
 
-"active"
+active
+
+NKey: UAMLBE4LIDYXH6FO5LW6CPLEBZJ23I2OT3TPZYIJPQY5HJ46X3BU7UJK
+Signature: s
+
+active
+
+```
+
+JSON output with `-J` flag:
+
+```terminal
+❯ nix run .# -- get org.freedesktop.systemd1 /org/freedesktop/systemd1/unit/basic_2etarget ActiveState -J | jq
+{
+  "destination": "org.freedesktop.systemd1",
+  "path": "/org/freedesktop/systemd1/unit/basic_2etarget",
+  "responses": [
+    {
+      "nkey": "UAILZJS66U24VALTH2D6OWVD5JTS3IDFMKOICJSOX7CHNAF3AXFVWIFX",
+      "value": "active"
+    },
+    {
+      "nkey": "UBQUIKYGFC7CH5XMF52P2NN4ESI4XTXGAKT3WTG3XGU3352DMHGZQAX7",
+      "value": "active"
+    },
+    {
+      "nkey": "UAMLBE4LIDYXH6FO5LW6CPLEBZJ23I2OT3TPZYIJPQY5HJ46X3BU7UJK",
+      "value": "active"
+    }
+  ]
+}
 ```
 
 #### Get a property on a list of machines by NATS NKey
@@ -129,12 +185,32 @@ Signature: s
 Signature: s
 NKey: UAMLBE4LIDYXH6FO5LW6CPLEBZJ23I2OT3TPZYIJPQY5HJ46X3BU7UJK
 
-"active"
+active
 
 NKey: UBQUIKYGFC7CH5XMF52P2NN4ESI4XTXGAKT3WTG3XGU3352DMHGZQAX7
 Signature: s
 
-"active"
+active
+```
+
+JSON output with `-J` flag:
+
+```terminal
+❯ nix run .# -- get org.freedesktop.systemd1 /org/freedesktop/systemd1/unit/basic_2etarget ActiveState --nkeys UBQUIKYGFC7CH5XMF52P2NN4ESI4XTXGAKT3WTG3XGU3352DMHGZQAX7,UAMLBE4LIDYXH6FO5LW6CPLEBZJ23I2OT3TPZYIJPQY5HJ46X3BU7UJK -J | jq
+{
+  "destination": "org.freedesktop.systemd1",
+  "path": "/org/freedesktop/systemd1/unit/basic_2etarget",
+  "responses": [
+    {
+      "nkey": "UBQUIKYGFC7CH5XMF52P2NN4ESI4XTXGAKT3WTG3XGU3352DMHGZQAX7",
+      "value": "active"
+    },
+    {
+      "nkey": "UAMLBE4LIDYXH6FO5LW6CPLEBZJ23I2OT3TPZYIJPQY5HJ46X3BU7UJK",
+      "value": "active"
+    }
+  ]
+}
 ```
 
 #### Listen for all signals from each machine

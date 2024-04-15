@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nats-io/nats.go"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/brianmcgee/cbus/pkg/rpc"
@@ -30,19 +29,33 @@ func (i *Invoke) Run() (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	respCh := make(chan *nats.Msg, 16)
+	respCh := make(chan *rpc.Response, 16)
 
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
 		return rpc.InvokeMethod(ctx, i.Destination, i.Path, i.Property, respCh, i.Nkeys...)
 	})
 
-	for msg := range respCh {
-		for k, v := range msg.Header {
-			fmt.Printf("%s: %s\n", k, strings.Join(v, ","))
-		}
-		fmt.Println("\n" + string(msg.Data) + "\n")
+	var responses responseList
+	for resp := range respCh {
+		responses = append(responses, resp)
 	}
 
-	return eg.Wait()
+	for resp := range respCh {
+		for k, v := range resp.Msg.Header {
+			fmt.Printf("%s: %s\n", k, strings.Join(v, ","))
+		}
+		fmt.Println("\n" + string(resp.Value) + "\n")
+	}
+
+	if err = eg.Wait(); err != nil {
+		return err
+	}
+
+	if CLI.Json {
+		return printResponsesAsJson(i.Destination, i.Path, responses)
+	} else {
+		responses.Print()
+		return nil
+	}
 }

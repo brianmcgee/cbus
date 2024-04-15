@@ -143,6 +143,10 @@ func removeDestination(dest string) error {
 }
 
 func busHandler(req micro.Request) {
+	// response headers to include whether there is an error or not
+	respHeaders := micro.Headers{"NKey": []string{nkey}}
+	respOpts := []micro.RespondOpt{micro.WithHeaders(respHeaders)}
+
 	inv, err := parseInvocation(req.Subject())
 	if err != nil {
 		_ = req.Error("100", err.Error(), nil)
@@ -154,7 +158,7 @@ func busHandler(req micro.Request) {
 	// todo cache these lookups?
 	node, err := introspect.Call(obj)
 	if err != nil {
-		_ = req.Error("100", "failed to introspect object", []byte(err.Error()))
+		_ = req.Error("100", "failed to introspect object", []byte(err.Error()), respOpts...)
 		return
 	}
 
@@ -173,23 +177,18 @@ func busHandler(req micro.Request) {
 		}
 
 		if name == "" {
-			_ = req.Error("100", fmt.Sprintf("invalid property: %v", inv.target), nil)
+			_ = req.Error("100", fmt.Sprintf("invalid property: %v", inv.target), nil, respOpts...)
 			return
 		}
 
 		prop, err := obj.GetProperty(name)
 		if err != nil {
-			_ = req.Error("100", err.Error(), nil)
+			_ = req.Error("100", err.Error(), nil, respOpts...)
 			return
 		}
 
-		headers := micro.WithHeaders(
-			micro.Headers{
-				"NKey":      []string{nkey},
-				"Signature": []string{prop.Signature().String()},
-			},
-		)
-		_ = req.Respond([]byte(prop.String()), headers)
+		respHeaders["Signature"] = []string{prop.Signature().String()}
+		_ = req.Respond([]byte(prop.String()), respOpts...)
 
 	case "method":
 
@@ -204,7 +203,7 @@ func busHandler(req micro.Request) {
 		}
 
 		if method == "" {
-			_ = req.Error("100", fmt.Sprintf("invalid method: %v", inv.target), nil)
+			_ = req.Error("100", fmt.Sprintf("invalid method: %v", inv.target), nil, respOpts...)
 			return
 		}
 
@@ -215,7 +214,7 @@ func busHandler(req micro.Request) {
 
 		flag, err := strconv.Atoi(flagHeader)
 		if err != nil {
-			_ = req.Error("100", "invalid 'Method-Flag' header", nil)
+			_ = req.Error("100", "invalid 'Method-Flag' header", nil, respOpts...)
 			return
 		}
 
@@ -224,29 +223,24 @@ func busHandler(req micro.Request) {
 		var invokeArgs []interface{}
 		if len(req.Data()) > 0 {
 			if err = json.Unmarshal(req.Data(), &invokeArgs); err != nil {
-				_ = req.Error("100", "failed to unmarshal req.Data", nil)
+				_ = req.Error("100", "failed to unmarshal req.Data", nil, respOpts...)
 				return
 			}
 		}
 
 		call := obj.Call(method, dbus.Flags(flag), invokeArgs...)
 		if call.Err != nil {
-			_ = req.Error("100", "failed to invoke method: "+err.Error(), nil)
+			_ = req.Error("100", "failed to invoke method: "+err.Error(), nil, respOpts...)
 			return
 		}
 
 		bytes, err := json.Marshal(call.Body)
 		if err != nil {
-			_ = req.Error("100", "failed to marshal result to JSON", nil)
+			_ = req.Error("100", "failed to marshal result to JSON", nil, respOpts...)
 			return
 		}
 
-		headers := micro.WithHeaders(
-			micro.Headers{
-				"NKey": []string{nkey},
-			},
-		)
-		_ = req.Respond(bytes, headers)
+		_ = req.Respond(bytes, respOpts...)
 
 	default:
 		log.Error("unexpected invocation variant", "subject", req.Subject(), "variant", inv.variant)

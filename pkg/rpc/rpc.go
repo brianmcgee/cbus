@@ -24,7 +24,7 @@ func request(
 	path string,
 	variant string,
 	name string,
-	respCh chan *nats.Msg,
+	respCh chan *Response,
 	nkeys ...string,
 ) error {
 	defer close(respCh)
@@ -89,7 +89,10 @@ func request(
 		} else if err != nil {
 			return err
 		}
-		respCh <- msg
+
+		resp := Response{}
+		parseResponse(msg, &resp)
+		respCh <- &resp
 	}
 }
 
@@ -98,7 +101,7 @@ func GetProperty(
 	dest string,
 	path string,
 	name string,
-	respCh chan *nats.Msg,
+	respCh chan *Response,
 	nkeys ...string,
 ) error {
 	return request(ctx, dest, path, "prop", name, respCh, nkeys...)
@@ -109,7 +112,7 @@ func InvokeMethod(
 	dest string,
 	path string,
 	name string,
-	respCh chan *nats.Msg,
+	respCh chan *Response,
 	nkeys ...string,
 ) error {
 	return request(ctx, dest, path, "method", name, respCh, nkeys...)
