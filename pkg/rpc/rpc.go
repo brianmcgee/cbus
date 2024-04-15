@@ -1,4 +1,4 @@
-package send
+package rpc
 
 import (
 	"context"
@@ -47,7 +47,7 @@ func request(
 			name,
 		)
 
-		// send the request
+		// rpc the request
 		msg := nats.NewMsg(subject)
 		msg.Reply = inbox
 
@@ -66,7 +66,7 @@ func request(
 				name,
 			)
 
-			// send the request
+			// rpc the request
 			msg := nats.NewMsg(subject)
 			msg.Reply = inbox
 
@@ -93,7 +93,7 @@ func request(
 	}
 }
 
-func Get(
+func GetProperty(
 	ctx context.Context,
 	dest string,
 	path string,
@@ -104,7 +104,7 @@ func Get(
 	return request(ctx, dest, path, "prop", name, respCh, nkeys...)
 }
 
-func Method(
+func InvokeMethod(
 	ctx context.Context,
 	dest string,
 	path string,

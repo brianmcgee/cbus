@@ -9,7 +9,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/brianmcgee/cbus/pkg/send"
+	"github.com/brianmcgee/cbus/pkg/rpc"
 	nutil "github.com/numtide/nits/pkg/nats"
 )
 
@@ -23,7 +23,7 @@ type Get struct {
 }
 
 func (g *Get) Run() (err error) {
-	if err = send.Init(g.Nats); err != nil {
+	if err = rpc.Init(g.Nats); err != nil {
 		return err
 	}
 
@@ -34,7 +34,7 @@ func (g *Get) Run() (err error) {
 
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
-		return send.Get(ctx, g.Destination, g.Path, g.Property, respCh, g.Nkeys...)
+		return rpc.GetProperty(ctx, g.Destination, g.Path, g.Property, respCh, g.Nkeys...)
 	})
 
 	for msg := range respCh {

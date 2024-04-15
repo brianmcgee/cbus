@@ -31,7 +31,7 @@ func Init(natsConfig nutil.CliOptions) (err error) {
 		return errors.Annotate(err, "failed to connect to system dbus")
 	}
 
-	// create a separate monitor connection, it can only be used to listen for messages, not send
+	// create a separate monitor connection, it can only be used to listen for messages, not rpc
 	monitorConn, err = dbus.ConnectSystemBus()
 	if err != nil {
 		return errors.Annotate(err, "failed to connect to system dbus")
